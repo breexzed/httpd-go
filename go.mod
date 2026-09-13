@@ -1,3 +1,3 @@
-module http-server/v1
+module github.com/breexzed/httpd-go
 
 go 1.27.0
