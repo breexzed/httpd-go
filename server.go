@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -27,16 +29,24 @@ func main() {
 		//so I can handle errors for any connection that fails without it affecting the others
 		//initially was go handleConnection(conn)
 		go func() {
-			err := handleConnection(conn)
-			if err != nil {
-				fmt.Println("connection error:", err)
+			defer conn.Close()
+
+			reader := bufio.NewReader(conn)
+
+			for {
+				err := handleConnection(conn, reader)
+				if err != nil {
+					if !errors.Is(err, io.EOF) {
+						fmt.Println("Error handling connection:", err)
+					}
+					break
+				}
 			}
 		}()
 	}
 }
 
-func handleConnection(conn net.Conn) error {
-
+func handleConnection(conn net.Conn, reader *bufio.Reader) error {
 	//used a struct cause I like reading elegant code, not really necessary
 	//probably not the right way to do this but going to let this one slide
 	type Request struct {
@@ -48,8 +58,7 @@ func handleConnection(conn net.Conn) error {
 	}
 
 	//ensure connections closes after it's being handles
-	//finally i get to use this stuff in the real world. very useful.
-	defer conn.Close()
+	//finally I get to use this stuff in the real world. very useful.
 
 	start := time.Now()
 	ipAddr := conn.RemoteAddr().String()
@@ -57,7 +66,6 @@ func handleConnection(conn net.Conn) error {
 	//without bufio I wouldn't have been able to read off conn(which is a byte)
 	//Off is the word here cause this implies I'm reading its content on the fly
 	//which is exactly what I went on t do with it
-	reader := bufio.NewReader(conn)
 
 	line, err := reader.ReadString('\n')
 	if err != nil {
